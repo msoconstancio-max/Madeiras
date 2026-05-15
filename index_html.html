@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Laser Preços" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <title>Simulador Laser</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; padding-bottom: env(safe-area-inset-bottom); }
+    h1 { font-size: 20px; font-weight: 600; padding: 16px; background: #fff; border-bottom: 1px solid #e5e5e5; position: sticky; top: 0; z-index: 10; }
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid #e5e5e5; }
+    .tab { flex: 1; padding: 12px; font-size: 14px; border: none; background: none; cursor: pointer; color: #888; font-weight: 500; border-bottom: 2px solid transparent; }
+    .tab.active { color: #007AFF; border-bottom-color: #007AFF; }
+    .section { background: #fff; margin: 12px; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .section-title { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    label { font-size: 14px; color: #555; display: block; margin-bottom: 4px; }
+    input[type=number], input[type=text] { width: 100%; padding: 10px 12px; font-size: 15px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; color: #1a1a1a; -webkit-appearance: none; }
+    input:focus { outline: none; border-color: #007AFF; background: #fff; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .chip { padding: 8px 14px; font-size: 13px; border-radius: 20px; border: 1px solid #ddd; background: #fafafa; cursor: pointer; color: #444; }
+    .chip.selected { background: #007AFF; border-color: #007AFF; color: #fff; font-weight: 500; }
+    .hint { font-size: 12px; color: #999; margin-top: 4px; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 12px; }
+    .metric { background: #fff; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .metric-label { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .metric-value { font-size: 20px; font-weight: 600; }
+    .green { color: #34C759; }
+    .red { color: #FF3B30; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .summary-row:last-child { border-bottom: none; font-weight: 600; font-size: 15px; padding-top: 10px; }
+    .summary-label { color: #666; }
+    .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 4px; }
+    .btn-primary { background: #007AFF; color: #fff; }
+    .btn-success { background: #34C759; color: #fff; }
+    .add-row { display: flex; gap: 8px; margin-top: 12px; }
+    .add-row input { flex: 1; }
+    .add-row input:last-of-type { flex: 0.6; }
+    .btn-small { padding: 10px 14px; border-radius: 8px; border: 1px solid #ddd; background: #fafafa; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .item-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+    .item-row:last-child { border-bottom: none; }
+    .item-name { flex: 2; font-size: 14px; }
+    .item-cost { flex: 1; font-size: 14px; color: #888; }
+    .btn-icon { padding: 6px 10px; border-radius: 8px; border: 1px solid #ddd; background: none; cursor: pointer; font-size: 14px; }
+    .hidden { display: none; }
+    .page { padding-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+<h1>🪵 Simulador de Preços — Laser</h1>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('sim')">Simulação</button>
+  <button class="tab" onclick="showTab('config')">Configurações</button>
+</div>
+
+<div id="tab-sim" class="page">
+  <div class="section">
+    <div class="section-title">Material base</div>
+    <div class="chip-group" id="mat-chips"></div>
+    <div id="mat-qty-row" class="hidden">
+      <label>Quantidade / área</label>
+      <input type="number" id="mat-qty" min="0" step="0.1" value="1" oninput="calc()" />
+      <div class="hint" id="mat-hint"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Engravamento</div>
+    <label>Material de engravamento (qtd)</label>
+    <input type="number" id="engrave-qty" min="0" step="0.1" value="0" oninput="calc()" />
+    <div class="hint" id="engrave-hint"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Máquinas Laser</div>
+    <div class="row">
+      <div>
+        <label>P2S (minutos)</label>
+        <input type="number" id="p2s-mins" min="0" step="1" value="0" oninput="calc()" />
+        <div class="hint" id="p2s-hint"></div>
+      </div>
+      <div>
+        <label>F2 (minutos)</label>
+        <input type="number" id="f2-mins" min="0" step="1" value="0" oninput="calc()" />
+        <div class="hint" id="f2-hint"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="extras-sim-section">
+    <div class="section-title">Custos adicionais</div>
+    <div id="extras-sim"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Preço de venda</div>
+    <input type="number" id="sale-price" min="0" step="0.01" placeholder="0.00" oninput="calc()" />
+  </div>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">Custo total</div>
+      <div class="metric-value" id="m-cost">0.00 €</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Lucro (€)</div>
+      <div class="metric-value" id="m-profit">0.00 €</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Margem (%)</div>
+      <div class="metric-value" id="m-margin">0.0 %</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Resumo</div>
+    <div id="summary"></div>
+  </div>
+</div>
+
+<div id="tab-config" class="page hidden">
+  <div class="section">
+    <div class="section-title">Tipos de material</div>
+    <div id="mat-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-mat-name" placeholder="Nome (ex: Acrílico UV)" />
+      <input type="number" id="new-mat-cost" placeholder="€/un" min="0" step="0.01" />
+      <button class="btn-small" onclick="addMat()">+ Adicionar</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Material de engravamento</div>
+    <label>Custo por unidade (€)</label>
+    <input type="number" id="cfg-engrave" min="0" step="0.01" oninput="saveCfg()" />
+  </div>
+
+  <div class="section">
+    <div class="section-title">Máquinas Laser</div>
+    <div class="row">
+      <div>
+        <label>P2S — taxa (€/hora)</label>
+        <input type="number" id="cfg-p2s" min="0" step="0.01" oninput="saveCfg()" />
+      </div>
+      <div>
+        <label>F2 — taxa (€/hora)</label>
+        <input type="number" id="cfg-f2" min="0" step="0.01" oninput="saveCfg()" />
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Custos adicionais</div>
+    <div id="extras-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-extra-name" placeholder="Nome (ex: Verniz)" />
+      <input type="number" id="new-extra-cost" placeholder="€/un" min="0" step="0.01" />
+      <button class="btn-small" onclick="addExtra()">+ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = 'laser_pwa_v1';
+let cfg = {
+  materials: [
+    { id: 1, name: 'MDF', cost: 8 },
+    { id: 2, name: 'Pinho', cost: 12 },
+    { id: 3, name: 'Contraplacado', cost: 10 },
+    { id: 4, name: 'Acrílico', cost: 18 },
+  ],
+  engraveMaterial: 2.5,
+  p2sRate: 0.8,
+  f2Rate: 1.2,
+  extras: [
+    { id: 1, name: 'Cola', cost: 0.3 },
+    { id: 2, name: 'Ímans', cost: 0.5 },
+  ]
+};
+let selMatId = null;
+let extraQtys = {};
+
+function load() {
+  try { const s = localStorage.getItem(KEY); if (s) cfg = JSON.parse(s); } catch {}
+}
+
+function saveCfg() {
+  cfg.engraveMaterial = parseFloat(document.getElementById('cfg-engrave').value) || 0;
+  cfg.p2sRate = parseFloat(document.getElementById('cfg-p2s').value) || 0;
+  cfg.f2Rate = parseFloat(document.getElementById('cfg-f2').value) || 0;
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  renderAll();
+}
+
+function showTab(t) {
+  document.getElementById('tab-sim').classList.toggle('hidden', t !== 'sim');
+  document.getElementById('tab-config').classList.toggle('hidden', t !== 'config');
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', (i === 0 && t === 'sim') || (i === 1 && t === 'config')));
+}
+
+function renderChips() {
+  const el = document.getElementById('mat-chips');
+  el.innerHTML = cfg.materials.map(m =>
+    `<div class="chip${selMatId === m.id ? ' selected' : ''}" onclick="selMat(${m.id})">${m.name}<br><small>${m.cost.toFixed(2)} €</small></div>`
+  ).join('');
+  const row = document.getElementById('mat-qty-row');
+  row.classList.toggle('hidden', selMatId === null);
+  const mat = cfg.materials.find(m => m.id === selMatId);
+  if (mat) document.getElementById('mat-hint').textContent = `= ${(parseFloat(document.getElementById('mat-qty').value || 0) * mat.cost).toFixed(2)} €`;
+}
+
+function selMat(id) {
+  selMatId = id;
+  renderChips();
+  calc();
+}
+
+function renderExtras() {
+  const el = document.getElementById('extras-sim');
+  if (!cfg.extras.length) { el.innerHTML = '<p style="font-size:13px;color:#999">Nenhum extra configurado</p>'; return; }
+  el.innerHTML = cfg.extras.map(e =>
+    `<div style="margin-bottom:12px"><label>${e.name} (qtd) — ${e.cost.toFixed(2)} €/un</label>
+    <input type="number" min="0" step="1" value="${extraQtys[e.id] || 0}" oninput="extraQtys[${e.id}]=parseFloat(this.value)||0;calc()" style="width:100%;padding:10px 12px;font-size:15px;border:1px solid #ddd;border-radius:8px;background:#fafafa;" /></div>`
+  ).join('');
+}
+
+function renderMatList() {
+  const el = document.getElementById('mat-list');
+  el.innerHTML = cfg.materials.map(m =>
+    `<div class="item-row"><span class="item-name">${m.name}</span><span class="item-cost">${m.cost.toFixed(2)} €/un</span>
+    <button class="btn-icon" onclick="removeMat(${m.id})">🗑</button></div>`
+  ).join('');
+}
+
+function renderExtrasList() {
+  const el = document.getElementById('extras-list');
+  el.innerHTML = cfg.extras.map(e =>
+    `<div class="item-row"><span class="item-name">${e.name}</span><span class="item-cost">${e.cost.toFixed(2)} €/un</span>
+    <button class="btn-icon" onclick="removeExtra(${e.id})">🗑</button></div>`
+  ).join('');
+}
+
+function renderCfgInputs() {
+  document.getElementById('cfg-engrave').value = cfg.engraveMaterial;
+  document.getElementById('cfg-p2s').value = cfg.p2sRate;
+  document.getElementById('cfg-f2').value = cfg.f2Rate;
+}
+
+function renderAll() {
+  renderChips();
+  renderExtras();
+  renderMatList();
+  renderExtrasList();
+  renderCfgInputs();
+  updateHints();
+  calc();
+}
+
+function updateHints() {
+  document.getElementById('engrave-hint').textContent = `@ ${cfg.engraveMaterial.toFixed(2)} €/un`;
+  document.getElementById('p2s-hint').textContent = `@ ${cfg.p2sRate.toFixed(2)} €/h`;
+  document.getElementById('f2-hint').textContent = `@ ${cfg.f2Rate.toFixed(2)} €/h`;
+}
+
+function calc() {
+  const mat = cfg.materials.find(m => m.id === selMatId);
+  const matQty = parseFloat(document.getElementById('mat-qty').value) || 0;
+  const matCost = mat ? matQty * mat.cost : 0;
+  const engraveQty = parseFloat(document.getElementById('engrave-qty').value) || 0;
+  const engraveCost = engraveQty * cfg.engraveMaterial;
+  const p2sMins = parseFloat(document.getElementById('p2s-mins').value) || 0;
+  const f2Mins = parseFloat(document.getElementById('f2-mins').value) || 0;
+  const p2sCost = (p2sMins / 60) * cfg.p2sRate;
+  const f2Cost = (f2Mins / 60) * cfg.f2Rate;
+  const extrasCost = cfg.extras.reduce((a, e) => a + (extraQtys[e.id] || 0) * e.cost, 0);
+  const total = matCost + engraveCost + p2sCost + f2Cost + extrasCost;
+  const sale = parseFloat(document.getElementById('sale-price').value) || 0;
+  const profit = sale - total;
+  const margin = sale > 0 ? (profit / sale) * 100 : 0;
+
+  document.getElementById('m-cost').textContent = total.toFixed(2) + ' €';
+  const mp = document.getElementById('m-profit');
+  mp.textContent = profit.toFixed(2) + ' €';
+  mp.className = 'metric-value ' + (profit >= 0 ? 'green' : 'red');
+  const mm = document.getElementById('m-margin');
+  mm.textContent = margin.toFixed(1) + ' %';
+  mm.className = 'metric-value ' + (margin >= 0 ? 'green' : 'red');
+
+  const rows = [
+    [mat ? mat.name : null, matCost],
+    ['Engravamento', engraveCost],
+    ['P2S', p2sCost],
+    ['F2', f2Cost],
+    ['Extras', extrasCost],
+  ].filter(([l, v]) => l && v > 0);
+
+  document.getElementById('summary').innerHTML =
+    rows.map(([l, v]) => `<div class="summary-row"><span class="summary-label">${l}</span><span>${v.toFixed(2)} €</span></div>`).join('') +
+    `<div class="summary-row"><span>Total</span><span>${total.toFixed(2)} €</span></div>`;
+
+  if (mat) document.getElementById('mat-hint').textContent = `= ${matCost.toFixed(2)} €`;
+}
+
+function addMat() {
+  const name = document.getElementById('new-mat-name').value.trim();
+  const cost = parseFloat(document.getElementById('new-mat-cost').value);
+  if (!name || !cost) return;
+  cfg.materials.push({ id: Date.now(), name, cost });
+  document.getElementById('new-mat-name').value = '';
+  document.getElementById('new-mat-cost').value = '';
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  renderAll();
+}
+
+function removeMat(id) {
+  cfg.materials = cfg.materials.filter(m => m.id !== id);
+  if (selMatId === id) selMatId = null;
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  renderAll();
+}
+
+function addExtra() {
+  const name = document.getElementById('new-extra-name').value.trim();
+  const cost = parseFloat(document.getElementById('new-extra-cost').value);
+  if (!name || !cost) return;
+  cfg.extras.push({ id: Date.now(), name, cost });
+  document.getElementById('new-extra-name').value = '';
+  document.getElementById('new-extra-cost').value = '';
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  renderAll();
+}
+
+function removeExtra(id) {
+  cfg.extras = cfg.extras.filter(e => e.id !== id);
+  delete extraQtys[id];
+  try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch {}
+  renderAll();
+}
+
+load();
+renderAll();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
